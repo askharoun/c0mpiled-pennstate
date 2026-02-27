@@ -1,0 +1,160 @@
+/* General Layout */
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #f8f9fa;
+    height: 100%;
+}
+
+.app-container {
+    display: flex;
+    height: 100vh;
+}
+
+/* Sidebar Styling */
+.sidebar {
+    width: 280px;
+    background-color: #1a1c2e;
+    color: white;
+    padding: 30px 20px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+}
+
+.sidebar h2 {
+    color: #4dabf7;
+    margin-bottom: 40px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.upload-section {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px dashed rgba(255,255,255,0.2);
+}
+
+.upload-section p {
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+    color: #ced4da;
+}
+
+input[type="file"] {
+    width: 100%;
+    margin-bottom: 15px;
+    font-size: 0.8rem;
+}
+
+#processBtn {
+    width: 100%;
+    padding: 12px;
+    background-color: #4dabf7;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+}
+
+#processBtn:hover {
+    background-color: #339af0;
+    transform: translateY(-2px);
+}
+
+#statusUpdate {
+    margin-top: auto;
+    font-size: 0.8rem;
+    color: #adb5bd;
+    text-align: center;
+}
+
+/* Main Content Area */
+.content-area {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 40px;
+}
+
+header h1 {
+    font-size: 2rem;
+    color: #212529;
+    margin-bottom: 30px;
+}
+
+/* Results Grid & Cards */
+.results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 25px;
+}
+
+.module-card {
+    background: white;
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    border: 1px solid #e9ecef;
+    transition: box-shadow 0.3s;
+}
+
+.module-card:hover {
+    box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+}
+
+.module-card h3 {
+    margin-top: 0;
+    color: #1a1c2e;
+    border-bottom: 2px solid #f1f3f5;
+    padding-bottom: 10px;
+}
+
+.yt-link {
+    display: inline-block;
+    margin: 15px 0;
+    color: #e03131;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.practice-area {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 15px;
+}
+
+.practice-area h4 {
+    margin-top: 0;
+    font-size: 0.9rem;
+    color: #495057;
+}
+
+.practice-area ul {
+    padding-left: 20px;
+    font-size: 0.85rem;
+    color: #495057;
+}
+
+/* Loading Spinner */
+.hidden { display: none; }
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #4dabf7;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
