@@ -245,6 +245,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     init();
 
+    // Fallback: clear loading state after 5 seconds if it's still true
+    const loadingTimeout = setTimeout(() => {
+      dispatch({ type: "SET_LOADING", payload: false });
+    }, 5000);
+
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: string, session: { user?: User | null } | null) => {
       const user = session?.user ?? null;
@@ -260,7 +265,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(loadingTimeout);
+      subscription.unsubscribe();
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const addClass = useCallback(
