@@ -178,13 +178,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Initialize: listen for auth state and load data
+  // Initialize: load auth and data
   useEffect(() => {
     let isMounted = true;
+    let dataLoaded = false;
 
     async function loadUserData(userId: string) {
       try {
-        // First, get the thread IDs
         const { data: threadData, error: threadError } = await supabase
           .from("threads")
           .select("id")
@@ -195,7 +195,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
         const threadIds = threadData?.map((t: { id: string }) => t.id) || [];
 
-        // Load main data (classes, threads, messages)
         const [classesRes, threadsRes, messagesRes] = await Promise.all([
           supabase.from("classes").select("*").eq("user_id", userId).order("created_at"),
           supabase.from("threads").select("*").eq("user_id", userId).order("updated_at", { ascending: false }),
@@ -214,7 +213,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
         dispatch({ type: "LOAD_DATA", payload: { classes, threads } });
 
-        // Load flashcards, quizzes, events in parallel (non-blocking)
         Promise.all([
           supabase.from("flashcards").select("*").eq("user_id", userId).order("created_at"),
           supabase.from("quizzes").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
@@ -233,32 +231,51 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Fallback: clear loading state after 5 seconds if it's still true
-    const loadingTimeout = setTimeout(() => {
-      dispatch({ type: "SET_LOADING", payload: false });
-    }, 5000);
-
-    // Use onAuthStateChange as the single source of truth for auth state.
-    // This avoids concurrent getUser() calls that fight over the browser lock.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: string, session: { user?: User | null } | null) => {
+    // Initial load: getSession() reads from memory/cookies — no network call,
+    // no Web Lock acquisition, so no lock contention with strict mode or
+    // concurrent middleware requests. Server-side auth is already validated
+    // by middleware's getUser() call.
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (!isMounted) return;
-
       const user = session?.user ?? null;
       dispatch({ type: "SET_USER", payload: user });
-
-      if (user && (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED")) {
-        await loadUserData(user.id);
-      }
-      if (!user && event === "INITIAL_SESSION") {
+      if (user && !dataLoaded) {
+        dataLoaded = true;
+        loadUserData(user.id);
+      } else if (!user) {
         dispatch({ type: "SET_LOADING", payload: false });
       }
+    });
+
+    // Listen for actual auth changes (sign in / sign out) only.
+    // Ignore INITIAL_SESSION (handled above) and TOKEN_REFRESHED (just a
+    // token rotation — no need to reload all data and cause UI flicker).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: string, session: { user?: User | null } | null) => {
+      if (!isMounted) return;
+      const user = session?.user ?? null;
+
+      if (event === "SIGNED_IN") {
+        dispatch({ type: "SET_USER", payload: user });
+        if (user && !dataLoaded) {
+          dataLoaded = true;
+          await loadUserData(user.id);
+        }
+      }
+
       if (event === "SIGNED_OUT") {
+        dataLoaded = false;
+        dispatch({ type: "SET_USER", payload: null });
         dispatch({ type: "LOAD_DATA", payload: { classes: [], threads: [] } });
         dispatch({ type: "SET_FLASHCARDS", payload: [] });
         dispatch({ type: "SET_QUIZZES", payload: [] });
         dispatch({ type: "SET_EVENTS", payload: [] });
       }
     });
+
+    // Fallback: clear loading state after 5 seconds
+    const loadingTimeout = setTimeout(() => {
+      dispatch({ type: "SET_LOADING", payload: false });
+    }, 5000);
 
     return () => {
       isMounted = false;

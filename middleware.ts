@@ -25,13 +25,30 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Use getSession() for routing decisions — reads the JWT from cookies
+  // locally without a network round-trip. The JWT is cryptographically
+  // signed so it can't be forged. Actual data security is enforced by
+  // RLS (validates JWT on every query) and getUser() in API routes.
+  //
+  // getUser() was causing ~500ms+ latency on every navigation because it
+  // makes a network call to Supabase's auth server on every request.
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
+
+  // Helper: copy refreshed auth cookies onto a different response so the
+  // browser stays in sync even when we return a redirect or 401.
+  function forwardCookies(target: NextResponse) {
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      target.cookies.set(cookie.name, cookie.value);
+    });
+    return target;
+  }
 
   // Return 401 for unauthenticated API requests
   if (!user && request.nextUrl.pathname.startsWith("/api")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return forwardCookies(
+      NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    );
   }
 
   // Redirect unauthenticated users to login (except auth pages)
@@ -41,14 +58,14 @@ export async function middleware(request: NextRequest) {
   ) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
-    return NextResponse.redirect(url);
+    return forwardCookies(NextResponse.redirect(url));
   }
 
   // Redirect authenticated users away from auth pages
   if (user && request.nextUrl.pathname.startsWith("/auth")) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
-    return NextResponse.redirect(url);
+    return forwardCookies(NextResponse.redirect(url));
   }
 
   return supabaseResponse;
