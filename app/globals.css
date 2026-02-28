@@ -3,24 +3,105 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --sidebar: #2D3A2D;
+  --sidebar-hover: #3A4A3A;
+  --olive-500: #4A5D4A;
+  --olive-600: #3D4F3D;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-olive-500: var(--olive-500);
+  --color-olive-600: var(--olive-600);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Markdown table styling */
+.prose table {
+  border-collapse: collapse;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.prose thead th {
+  background-color: var(--sidebar) !important;
+  color: white !important;
+  padding: 10px 16px !important;
+  text-align: left;
+  font-weight: 600;
+}
+
+.prose tbody td {
+  padding: 10px 16px !important;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.prose tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Flashcard flip animation */
+.flashcard-container {
+  perspective: 1000px;
+}
+
+.flashcard-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.5s;
+  transform-style: preserve-3d;
+}
+
+.flashcard-inner.flipped {
+  transform: rotateY(180deg);
+}
+
+.flashcard-front,
+.flashcard-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  border-radius: 1rem;
+  border: 1px solid #e5e7eb;
+}
+
+.flashcard-back {
+  transform: rotateY(180deg);
+  background: var(--sidebar);
+  color: white;
+  border-color: var(--sidebar);
 }
