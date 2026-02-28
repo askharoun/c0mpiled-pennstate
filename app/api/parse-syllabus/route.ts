@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
 const REDUCTO_API_KEY = process.env.REDUCTO_API_KEY;
 const REDUCTO_BASE = "https://platform.reducto.ai";
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     if (!REDUCTO_API_KEY) {
       return NextResponse.json(
         { error: "REDUCTO_API_KEY not configured" },

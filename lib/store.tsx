@@ -178,23 +178,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Initialize: check auth + load data
+  // Initialize: listen for auth state and load data
   useEffect(() => {
-    async function init() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        dispatch({ type: "SET_USER", payload: user });
-
-        if (user) {
-          await loadUserData(user.id);
-        } else {
-          dispatch({ type: "SET_LOADING", payload: false });
-        }
-      } catch (err) {
-        console.error("Failed to initialize auth:", err);
-        dispatch({ type: "SET_LOADING", payload: false });
-      }
-    }
+    let isMounted = true;
 
     async function loadUserData(userId: string) {
       try {
@@ -205,6 +191,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           .eq("user_id", userId);
 
         if (threadError) throw threadError;
+        if (!isMounted) return;
 
         const threadIds = threadData?.map((t: { id: string }) => t.id) || [];
 
@@ -216,6 +203,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             ? supabase.from("messages").select("*").in("thread_id", threadIds).order("created_at")
             : Promise.resolve({ data: [] }),
         ]);
+
+        if (!isMounted) return;
 
         const classes = (classesRes.data || []) as Class[];
         const threads = (threadsRes.data || []).map((t: Record<string, unknown>) => ({
@@ -231,6 +220,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           supabase.from("quizzes").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
           supabase.from("study_events").select("*").eq("user_id", userId).order("date"),
         ]).then(([flashcardsRes, quizzesRes, eventsRes]) => {
+          if (!isMounted) return;
           if (flashcardsRes.data) dispatch({ type: "SET_FLASHCARDS", payload: flashcardsRes.data as Flashcard[] });
           if (quizzesRes.data) dispatch({ type: "SET_QUIZZES", payload: quizzesRes.data as Quiz[] });
           if (eventsRes.data) dispatch({ type: "SET_EVENTS", payload: eventsRes.data as StudyEvent[] });
@@ -239,23 +229,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         });
       } catch (err) {
         console.error("Failed to load user data:", err);
-        dispatch({ type: "SET_LOADING", payload: false });
+        if (isMounted) dispatch({ type: "SET_LOADING", payload: false });
       }
     }
-
-    init();
 
     // Fallback: clear loading state after 5 seconds if it's still true
     const loadingTimeout = setTimeout(() => {
       dispatch({ type: "SET_LOADING", payload: false });
     }, 5000);
 
-    // Listen for auth changes
+    // Use onAuthStateChange as the single source of truth for auth state.
+    // This avoids concurrent getUser() calls that fight over the browser lock.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: string, session: { user?: User | null } | null) => {
+      if (!isMounted) return;
+
       const user = session?.user ?? null;
       dispatch({ type: "SET_USER", payload: user });
-      if (user && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED")) {
+
+      if (user && (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED")) {
         await loadUserData(user.id);
+      }
+      if (!user && event === "INITIAL_SESSION") {
+        dispatch({ type: "SET_LOADING", payload: false });
       }
       if (event === "SIGNED_OUT") {
         dispatch({ type: "LOAD_DATA", payload: { classes: [], threads: [] } });
@@ -266,6 +261,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
+      isMounted = false;
       clearTimeout(loadingTimeout);
       subscription.unsubscribe();
     };
